@@ -44,22 +44,18 @@ variables {C D E : Cat.{v u}}
 
 /-- Existence part of the universal property of products -/
 def prod_map (f : E ⟶ C) (g : E ⟶ D) : (E ⟶ prod C D) :=
-{
-  obj := λ z, ⟨ f.obj z , g.obj z ⟩,
-  map := λ _ _ h, ⟨ f.map h , g.map h ⟩,
-}
+{ obj := λ z, ⟨ f.obj z , g.obj z ⟩,
+  map := λ _ _ h, ⟨ f.map h , g.map h ⟩ }
+/- this is the style mathlib uses -/
 
-lemma eq_to_hom_fst {X Y : C × D} (h : X = Y) :
-  prod.fst (eq_to_hom h) = eq_to_hom (congr_arg prod.fst h) :=
-by cases h; refl
+lemma self_eq_prod_map (F : E ⟶ prod C D) : F = prod_map (F ≫ fst _ _) (F ≫ snd _ _) :=
+functor.hext (λ X, prod.ext rfl rfl) (λ X Y f, by { dsimp [prod_map, (≫)], cases F.map f, refl })
 
-lemma eq_to_hom_snd {X Y : C × D} (h : X = Y) :
-  prod.snd (eq_to_hom h) = eq_to_hom (congr_arg prod.snd h) :=
-by cases h; refl
+lemma prod_map_fst (f : E ⟶ C) (g : E ⟶ D) : prod_map f g ≫ fst C.α D.α = f :=
+by { cases f, refl }
 
--- lemma eq_to_hom_snd' {X Y : C} {Z W : D} (hXY : X = Y) (hZW : Z = W) :
---   (@eq_to_hom (C × D) _ ⟨ X , Z ⟩ ⟨ Y , W ⟩ (prod.ext hXY hZW)).snd = eq_to_hom hZW :=
--- by cases hXY; cases hZW; refl
+lemma prod_map_snd (f : E ⟶ C) (g : E ⟶ D) : prod_map f g ≫ snd C.α D.α = g :=
+by { cases g, refl }
 
 namespace is_limit_prod_cone_pair
 
@@ -70,51 +66,28 @@ prod_map (c.π.app walking_pair.left) (c.π.app walking_pair.right)
 
 lemma fac (c : cone (pair C D)) (j : walking_pair) :
   lift c ≫ (prod_cone_pair C D).π.app j = c.π.app j :=
-category_theory.functor.ext (by intro _; cases j; refl) (by intros; cases j;
-  {simpa only [eq_to_hom_refl, category.comp_id, category.id_comp]})
+by { cases j, apply prod_map_fst, apply prod_map_snd }
 
 /-- Uniqueness part of the universal property of products -/
 lemma uniq
   (c : cone (pair C D)) (F : c.X ⟶ prod C D)
   (h : ∀ (j : discrete walking_pair), F ≫ (prod_cone_pair C D).π.app j = c.π.app j) :
   F = lift c :=
-category_theory.functor.ext
-begin
-  intro,
-  apply prod.ext,
-  { dsimp only [lift, prod_map, limits.binary_fan.π_app_left],
-    rw ← (congr_arg functor.obj (h walking_pair.left)),
-    refl },
-  { dsimp only [lift, prod_map, limits.binary_fan.π_app_right],
-    rw ← (congr_arg functor.obj (h walking_pair.right)),
-    refl },
-end
-begin
-  intros i j ϕ,
-  apply prod.ext,
-  { convert functor.congr_hom (h walking_pair.left) ϕ,
-    simpa only [prod_comp_fst, eq_to_hom_fst] },
-  { convert functor.congr_hom (h walking_pair.right) ϕ,
-    simpa only [prod_comp_snd, eq_to_hom_snd] },
-end
+by { rw self_eq_prod_map F, congr; convert h _; refl }
 
 end is_limit_prod_cone_pair
 
 /-- The product of categories (as a cone over the pair diagram) is a 1-limit -/
 def is_limit_prod_cone_pair :
   is_limit (prod_cone_pair C D) :=
-{
-  lift := is_limit_prod_cone_pair.lift,
+{ lift := is_limit_prod_cone_pair.lift,
   fac' := is_limit_prod_cone_pair.fac,
-  uniq' := is_limit_prod_cone_pair.uniq,
-}
+  uniq' := is_limit_prod_cone_pair.uniq }
 
 /-- The product of categories C × D forms 1-product in the category of categories -/
 def limit_cone_prod_cone_pair : limit_cone (pair C D) :=
-{
-  cone := prod_cone_pair C D,
-  is_limit := is_limit_prod_cone_pair
-}
+{ cone := prod_cone_pair C D,
+  is_limit := is_limit_prod_cone_pair }
 
 instance has_limit_pair : has_limit (pair C D) :=
 ⟨⟨ limit_cone_prod_cone_pair ⟩⟩
